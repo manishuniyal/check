@@ -9,12 +9,18 @@ import time
 from starlette.status import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 app = FastAPI()
+
 class Post_match(BaseModel):
     title: str
     post: str
     blog_live:bool=True
     rating :Optional[int]=None
 
+class Database_match(BaseModel):
+    name: str
+    id: str
+    price :Optional[int]=0    
+  
 while True:
 
     try:
@@ -41,6 +47,13 @@ def read_root():
 # or  http://127.0.0.1:8000/items/5?q=somequery
 def read_item(item_id: int, q: Optional[str] = None):
     return {"item_id": item_id, "Optional string": q}
+
+@app.get("/posts/{id}")
+def get_post(id:int):
+    cur.execute("""select * from products where id=%s""",id)
+    post_test=cur.fetchone()
+    print(post_test)
+    return{ "database Post": post_test}
 
 @app.get("/dr")
 def more_post():
@@ -123,4 +136,59 @@ def create_post(new_post: Post_match):
     return {"data": post_dict}
     #return {"This is received title": new_post.title, "This is received post":new_post.post}
 
+@app.post("/posts/db",status_code=status.HTTP_201_CREATED)
+def created_posts_database(post:Database_match):
+    cur.execute("""insert into products (name, price, id) values (%s,%s,%s) returning * """,
+    (post.name, post.price, post.id)  ) 
+    new_post=cur.fetchone()
+    conn.commit()
+    return {"data": new_post}
 
+@app.get("/posts/db")
+def get_posts():
+    cur.execute("""select * from  products""")
+    posts=cur.fetchall()
+    return{"Database Data":posts}
+'''
+while True:
+    try:
+            
+        # Connect to an existing database
+        with psycopg.connect("dbname=api user=manish host=localhost password=pooja1@A") as conn:
+
+            # Open a cursor to perform database operations
+            with conn.cursor() as cur:
+                print("okkk")
+
+                # Execute a command: this creates a new table
+                cur.execute("""
+                    CREATE TABLE test (
+                        id serial PRIMARY KEY,
+                        num integer,
+                        data text)
+                    """)
+
+                # Pass data to fill a query placeholders and let Psycopg perform
+                # the correct conversion (no SQL injections!)
+                cur.execute(
+                    "INSERT INTO test (num, data) VALUES (%s, %s)",
+                    (100, "abc'def"))
+
+                # Query the database and obtain data as Python objects.
+                posts= cur.execute("SELECT * FROM test")
+                print(posts)
+                cur.fetchone()
+                # will return (1, 100, "abc'def")
+
+                # You can use `cur.fetchmany()`, `cur.fetchall()` to return a list
+                # of several records, or even iterate on the cursor
+                for record in cur:
+                    print(record)
+
+                # Make the changes to the database persistent
+                conn.commit()
+                break
+    except Exception as error:
+        print("Error",error)
+        time.sleep(2)
+'''
